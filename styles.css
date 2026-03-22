@@ -9,18 +9,31 @@
   --grid: rgba(24, 34, 24, 0.12);
   --shadow: 0 24px 70px rgba(58, 40, 17, 0.12);
   --radius: 24px;
+  /* Square plot side: viewport-capped only — not tied to sidebar height */
+  --projection-canvas-size: min(1100px, 92dvh);
+  /* Breathing room between the plot and the viewer card edge */
+  --projection-canvas-inset: 10px;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  /* Let the document grow past the viewport; height:100% alone breaks tall-page backgrounds */
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100%;
+  min-height: 100dvh;
   font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
   color: var(--text);
-  background:
+  /* Solid underlay so scrolled regions never “fall through” compositing gaps */
+  background-color: #efe8da;
+  background-image:
     radial-gradient(circle at top left, rgba(255, 212, 161, 0.9), transparent 28%),
     radial-gradient(circle at bottom right, rgba(125, 173, 164, 0.32), transparent 30%),
     linear-gradient(160deg, #f8f3e7 0%, #efe8da 100%);
@@ -31,17 +44,89 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
+  z-index: 0;
   background-image:
     linear-gradient(rgba(24, 34, 24, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(24, 34, 24, 0.035) 1px, transparent 1px);
   background-size: 32px 32px;
-  mask-image: radial-gradient(circle at center, black 35%, transparent 82%);
+  /* Viewport-relative vertical fade — avoids a radial “ring” seam when scrolling past the cards */
+  mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+}
+
+/* Top-right peel tab → repo */
+.github-peel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 80;
+  width: 11rem;
+  height: 11rem;
+  overflow: hidden;
+  pointer-events: none;
+  text-decoration: none;
+}
+
+.github-peel__label {
+  pointer-events: auto;
+  position: absolute;
+  top: 2rem;
+  right: -3.75rem;
+  width: 14rem;
+  padding: 0.45rem 0;
+  text-align: center;
+  transform: rotate(45deg);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #fffaf3;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  box-shadow: 0 3px 14px rgba(173, 76, 28, 0.35);
+  transition: filter 160ms ease;
+}
+
+.github-peel:hover .github-peel__label,
+.github-peel:focus-visible .github-peel__label {
+  filter: brightness(1.07);
+}
+
+.github-peel:focus-visible {
+  outline: none;
+}
+
+.github-peel:focus-visible .github-peel__label {
+  outline: 2px solid #fffaf3;
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .github-peel {
+    width: 9rem;
+    height: 9rem;
+  }
+
+  .github-peel__label {
+    top: 1.55rem;
+    right: -3.45rem;
+    width: 12rem;
+    font-size: 0.6rem;
+    padding: 0.38rem 0;
+  }
 }
 
 .layout {
-  width: min(1480px, calc(100% - 24px));
+  /* Was 1480px; allow use of common 1920-class viewports while keeping side margins. */
+  width: min(1840px, calc(100% - 40px));
   margin: 0 auto;
   padding: 18px 0 28px;
+  min-height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 
 .panel {
@@ -53,12 +138,98 @@ body::before {
 }
 
 .hero {
-  padding: 28px 32px;
+  padding: 18px 28px 20px;
   margin-bottom: 18px;
 }
 
+.demo-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(24, 34, 24, 0.06);
+  border: 1px solid rgba(24, 34, 24, 0.08);
+}
+
+.demo-tab {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.demo-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.demo-tab.is-active {
+  color: #fffaf3;
+  background: linear-gradient(135deg, var(--accent), #e8943a);
+  box-shadow: 0 6px 18px rgba(215, 104, 45, 0.28);
+}
+
+.demo-tab:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 2px;
+}
+
+.scene-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: rgba(24, 34, 24, 0.05);
+  border: 1px solid rgba(24, 34, 24, 0.07);
+}
+
+.scene-tab {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.scene-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.scene-tab.is-active {
+  color: #fffaf3;
+  background: linear-gradient(135deg, var(--accent), #e8943a);
+  box-shadow: 0 4px 12px rgba(215, 104, 45, 0.22);
+}
+
+.scene-tab:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 2px;
+}
+
+.scene-tab:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 .eyebrow {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   text-transform: uppercase;
   letter-spacing: 0.18em;
   color: var(--accent-deep);
@@ -73,40 +244,137 @@ p {
 }
 
 h1 {
-  margin-bottom: 14px;
-  font-size: clamp(2rem, 5vw, 3.7rem);
-  line-height: 0.98;
-  max-width: 10ch;
+  margin-bottom: 8px;
+  font-size: clamp(1.35rem, 1.2vw + 1.05rem, 1.85rem);
+  line-height: 1.22;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .intro,
-.controls-copy,
-.viewer-header p {
+.controls-copy {
   color: var(--muted);
   line-height: 1.6;
 }
 
 .viewer-panel {
-  padding: 20px;
-  min-height: 100%;
+  --vp-pad: 20px;
+  padding: var(--vp-pad);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .viewer-header {
   display: flex;
-  align-items: start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.viewer-header > div:first-child h2 {
+  margin-bottom: 0;
+}
+
+.viewer-header-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.projection-zoom-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px;
+  border-radius: 12px;
+  background: rgba(24, 34, 24, 0.06);
+  border: 1px solid rgba(24, 34, 24, 0.08);
+}
+
+.projection-zoom-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.projection-zoom-button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.projection-zoom-button:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 2px;
+}
+
+.projection-zoom-button--reset {
+  min-width: 38px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .viewer-header h2,
-.controls-panel h2,
+.controls-panel-head h2,
 .status-panel h2 {
   margin-bottom: 8px;
   font-size: 1.2rem;
 }
 
-.reset-button,
+.controls-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.controls-panel-head h2 {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.controls-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pca-triple-readout {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--accent-deep);
+  background: rgba(201, 162, 39, 0.12);
+  border: 1px solid rgba(201, 162, 39, 0.28);
+}
+
+.pca-triple-readout[hidden] {
+  display: none !important;
+}
+
 .knob {
   border: none;
   border-radius: 999px;
@@ -115,39 +383,119 @@ h1 {
   transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
 }
 
-.reset-button {
-  padding: 12px 18px;
-  background: linear-gradient(135deg, var(--accent), #f2a444);
-  color: #fffaf3;
-  font-weight: 700;
-  box-shadow: 0 12px 30px rgba(215, 104, 45, 0.3);
+.reset-icon-button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(24, 34, 24, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  box-shadow: 0 4px 12px rgba(24, 34, 24, 0.06);
 }
 
-.reset-button:hover,
+.reset-icon-button:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(215, 104, 45, 0.35);
+  color: var(--accent-deep);
+  transform: translateY(-1px);
+}
+
+.reset-icon-button:active {
+  transform: translateY(1px);
+}
+
+.reset-icon-button:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 2px;
+}
+
 .knob:hover {
   transform: translateY(-1px);
 }
 
-.reset-button:active,
 .knob:active {
   transform: translateY(1px);
 }
 
-#projectionCanvas {
+.canvas-stack {
+  flex: 0 1 auto;
+  min-height: 0;
+  /* Edge-to-edge with the viewer card so the plot uses full panel width */
+  width: calc(100% + 2 * var(--vp-pad));
+  margin-left: calc(-1 * var(--vp-pad));
+  margin-right: calc(-1 * var(--vp-pad));
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.canvas-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.canvas-caption {
+  margin: 0 0 8px;
+  /* Match viewer header inset — canvas-stack is full-bleed, caption is not */
+  padding-inline: var(--vp-pad);
+  box-sizing: border-box;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.canvas-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  box-sizing: border-box;
   width: 100%;
-  height: auto;
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: 0;
+  min-height: 200px;
+  aspect-ratio: 1;
+  max-height: min(var(--projection-canvas-size), 92dvh);
+  /* Inset as padding + in-flow canvas (Firefox mishandles out-of-flow canvas + ::before sizing). */
+  padding: var(--projection-canvas-inset);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+#projectionCanvas {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
   display: block;
-  border-radius: 20px;
+  border-radius: 18px;
   background:
     radial-gradient(circle at center, rgba(255, 255, 255, 0.94) 0%, rgba(245, 238, 226, 0.95) 100%);
   border: 1px solid rgba(24, 34, 24, 0.08);
-  aspect-ratio: 1120 / 760;
 }
 
 .workspace {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 420px);
+  grid-template-columns: minmax(0, 1.85fr) minmax(360px, 520px);
   gap: 18px;
+  /* Keep projection height independent of how tall the sidebar is */
   align-items: start;
 }
 
@@ -161,11 +509,112 @@ h1 {
   padding: 24px;
 }
 
+.visual-toggle-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.edge-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(24, 34, 24, 0.08);
+}
+
+.edge-toggle-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.edge-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 50px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid rgba(24, 34, 24, 0.14);
+  border-radius: 999px;
+  background: rgba(24, 34, 24, 0.14);
+  cursor: pointer;
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.edge-switch:hover {
+  border-color: rgba(215, 104, 45, 0.35);
+}
+
+.edge-switch:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 2px;
+}
+
+.edge-switch.is-on {
+  background: linear-gradient(135deg, var(--accent), #e8943a);
+  border-color: rgba(215, 104, 45, 0.35);
+  box-shadow: 0 4px 14px rgba(215, 104, 45, 0.25);
+}
+
+.edge-switch-knob {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: #fffef8;
+  box-shadow: 0 2px 8px rgba(24, 34, 24, 0.18);
+  transition: transform 180ms ease;
+  pointer-events: none;
+}
+
+.edge-switch.is-on .edge-switch-knob {
+  transform: translateX(20px);
+}
+
 .knob-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
-  margin-top: 20px;
+  margin-top: 16px;
+}
+
+.knob-grid.knob-grid--many {
+  max-height: min(52vh, 560px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: start;
+  padding-right: 8px;
+}
+
+/* Tighter rows so labels + ± fit in three columns inside the sidebar (3D / 4D / 10D). */
+.knob-grid .knob-row {
+  padding: 10px 10px;
+  gap: 8px;
+}
+
+.knob-grid .knob-row strong {
+  font-size: 0.8125rem;
+  padding-right: 4px;
+}
+
+.knob-grid .knob-pair {
+  gap: 6px;
+}
+
+.knob-grid .knob {
+  width: 34px;
+  height: 34px;
+  font-size: 1.05rem;
+  box-shadow: 0 8px 16px rgba(24, 34, 24, 0.14);
 }
 
 .knob-row {
@@ -177,15 +626,20 @@ h1 {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(24, 34, 24, 0.08);
+  min-width: 0;
 }
 
 .knob-row strong {
   font-size: 1rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  padding-right: 8px;
 }
 
 .knob-pair {
   display: flex;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .knob {
@@ -219,10 +673,66 @@ code {
   white-space: pre-wrap;
 }
 
+code.angles-readout {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.legend-disclosure {
+  margin-top: 22px;
+}
+
+.legend-summary {
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--accent-deep);
+  letter-spacing: 0.03em;
+  list-style: none;
+  user-select: none;
+  border-radius: 8px;
+}
+
+.legend-summary:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 3px;
+}
+
+.legend-summary::-webkit-details-marker {
+  display: none;
+}
+
+.legend-summary::before {
+  content: "";
+  display: inline-block;
+  width: 0.35em;
+  height: 0.35em;
+  margin-right: 0.45em;
+  margin-bottom: 0.08em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+  vertical-align: middle;
+}
+
+.legend-disclosure[open] .legend-summary::before {
+  transform: rotate(45deg);
+}
+
+.legend-disclosure .legend {
+  margin-top: 10px;
+}
+
 .legend {
-  margin-top: 24px;
   display: grid;
   gap: 10px;
+}
+
+.legend.legend--many {
+  max-height: 14rem;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .legend-item {
@@ -238,10 +748,43 @@ code {
   border-radius: 999px;
 }
 
+/* Below ~1180px the sidebar column shrinks; two columns keep knobs readable. */
+@media (max-width: 1179px) {
+  .knob-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .knob-grid .knob-row {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .knob-grid .knob-row strong {
+    font-size: 1rem;
+    padding-right: 8px;
+  }
+
+  .knob-grid .knob-pair {
+    gap: 10px;
+  }
+
+  .knob-grid .knob {
+    width: 42px;
+    height: 42px;
+    font-size: 1.2rem;
+    box-shadow: 0 10px 20px rgba(24, 34, 24, 0.15);
+  }
+}
+
 @media (max-width: 860px) {
   .layout {
-    width: min(100% - 16px, 1480px);
+    width: min(100% - 16px, 1840px);
     padding-top: 16px;
+  }
+
+  .viewer-panel {
+    --vp-pad: 16px;
+    min-height: min(52vh, 520px);
   }
 
   .workspace {
@@ -250,6 +793,11 @@ code {
 
   .viewer-header {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .viewer-header .demo-tabs {
+    align-self: flex-start;
   }
 
   .knob-grid {

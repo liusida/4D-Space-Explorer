@@ -1,7 +1,13 @@
-# vis4D — 4D Rotation Explorer
+# vis4D — 3D–100D projection playground
 
-Small static page that projects the 4D origin and unit basis vectors **e1…e4** onto a **2D viewing plane** (orthonormal **u**, **v** in ℝ⁴). Use the sidebar to rotate that plane via the six coordinate planes (x1–x2 through x3–x4); hold **−** / **+** to step continuously. **Reset** restores the default view (dimensions 1 and 2).
+Static page that projects points in **ℝ³, ℝ⁴, ℝ¹⁰**, or **ℝ¹⁰⁰** onto a **2D view plane** (orthonormal **u**, **v**). Rotate the plane with the sidebar **−** / **+** controls (hold for continuous steps), or use **Random view**, **PCA view** (three random non-origin points → 2D PCA alignment), and **Reset**. **Projection zoom** (− / 1× / +) scales the plot only.
 
-**Run:** open `index.html` in a browser, or serve the folder (e.g. `python -m http.server`).
+**Scenes:** unit axes (+ origin), **hypercube** {0,1}ᵈ (up to **10D**), or **random cloud** in **[−1,1]ᵈ**. **100D** exposes **six sampled** coordinate planes (out of 4 950); full knob grids are kept for lower dimensions.
 
-**Stack:** HTML, CSS, Canvas 2D, vanilla JavaScript — no build step.
+**Run:** open `index.html`, or serve the folder (`python -m http.server`).
+
+**Stack:** HTML, CSS, Canvas 2D, vanilla JS — no build.
+
+**Repo:** [github.com/liusida/4D-Space-Explorer](https://github.com/liusida/4D-Space-Explorer)
+
+**Hack on it:** Fork this repo, clone it locally, and open the folder in **Cursor** (or any editor with Copilot, Codeium, etc.). There’s no bundler—just `index.html`, `app.js`, and `styles.css`—so describing a change in chat is usually enough to iterate quickly.
