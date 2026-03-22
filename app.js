@@ -290,9 +290,159 @@ let showProjectionCoords = false;
 
 /** Multiplier on projection scale (grid, points, edges); 1 = default framing. */
 let projectionZoom = 1;
+let enableUrlStateSync = false;
+let pendingUrlStateSyncRaf = 0;
+
+const URL_STATE_KEYS = {
+  mode: "m",
+  scene: "s",
+  edges: "e",
+  axisHint: "h",
+  coords: "c",
+  zoom: "z",
+  u: "u",
+  v: "v",
+};
 
 function cfg() {
   return DEMO_MODES[activeMode];
+}
+
+function parseBooleanParam(raw, fallback) {
+  if (raw == null) {
+    return fallback;
+  }
+  const v = String(raw).trim().toLowerCase();
+  if (v === "1" || v === "true" || v === "on" || v === "yes") {
+    return true;
+  }
+  if (v === "0" || v === "false" || v === "off" || v === "no") {
+    return false;
+  }
+  return fallback;
+}
+
+function parseModeParam(raw) {
+  const mode = String(raw ?? "").trim();
+  return Object.prototype.hasOwnProperty.call(DEMO_MODES, mode) ? mode : null;
+}
+
+function parseSceneParam(raw) {
+  const scene = String(raw ?? "").trim();
+  return scene === "axes" || scene === "cube" || scene === "cloud" ? scene : null;
+}
+
+function parseNumberListParam(raw, expectedLength) {
+  if (raw == null) {
+    return null;
+  }
+  const parts = String(raw)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length !== expectedLength) {
+    return null;
+  }
+  const values = parts.map((p) => Number(p));
+  if (values.some((n) => !Number.isFinite(n))) {
+    return null;
+  }
+  return values;
+}
+
+function serializeNumberList(values) {
+  return values.map((v) => (Math.abs(v) < 1e-8 ? "0" : Number(v.toFixed(6)).toString())).join(",");
+}
+
+function buildUrlStateParams() {
+  const params = new URLSearchParams(window.location.search);
+  params.set(URL_STATE_KEYS.mode, activeMode);
+  params.set(URL_STATE_KEYS.scene, scenePointMode);
+  params.set(URL_STATE_KEYS.edges, showFrameEdges ? "1" : "0");
+  params.set(URL_STATE_KEYS.axisHint, showRotationAxisHint ? "1" : "0");
+  params.set(URL_STATE_KEYS.coords, showProjectionCoords ? "1" : "0");
+  params.set(URL_STATE_KEYS.zoom, Number(projectionZoom.toFixed(4)).toString());
+  params.set(URL_STATE_KEYS.u, serializeNumberList(viewPlane.u));
+  params.set(URL_STATE_KEYS.v, serializeNumberList(viewPlane.v));
+  return params;
+}
+
+function replaceUrlWithCurrentState() {
+  if (!enableUrlStateSync) {
+    return;
+  }
+  const params = buildUrlStateParams();
+  const nextSearch = params.toString();
+  const currentSearch = window.location.search.replace(/^\?/, "");
+  if (nextSearch === currentSearch) {
+    return;
+  }
+  const hash = window.location.hash || "";
+  const nextUrl = `${window.location.pathname}?${nextSearch}${hash}`;
+  window.history.replaceState(null, "", nextUrl);
+}
+
+function scheduleUrlStateSync() {
+  if (!enableUrlStateSync || pendingUrlStateSyncRaf) {
+    return;
+  }
+  pendingUrlStateSyncRaf = window.requestAnimationFrame(() => {
+    pendingUrlStateSyncRaf = 0;
+    replaceUrlWithCurrentState();
+  });
+}
+
+function activateUrlStateSync() {
+  enableUrlStateSync = true;
+  scheduleUrlStateSync();
+}
+
+function applyUrlStateFromLocation() {
+  const params = new URLSearchParams(window.location.search);
+  const keys = Object.values(URL_STATE_KEYS);
+  const hasAnyKnownState = keys.some((k) => params.has(k));
+  if (!hasAnyKnownState) {
+    return false;
+  }
+
+  const parsedMode = parseModeParam(params.get(URL_STATE_KEYS.mode)) ?? activeMode;
+  activeMode = parsedMode;
+  basis = makeBasis(cfg().dimensions);
+  rotationAngles = Object.fromEntries(cfg().rotationPlanes.map((plane) => [plane.label, 0]));
+  viewPlane = freshDefaultPlane();
+  clearPcaTripleHighlight();
+  projectionZoom = 1;
+  lastDepthNormal = null;
+
+  const parsedScene = parseSceneParam(params.get(URL_STATE_KEYS.scene));
+  if (parsedScene && !(parsedScene === "cube" && !dimensionsAllowHypercube(cfg().dimensions))) {
+    scenePointMode = parsedScene;
+  } else if (scenePointMode === "cube" && !dimensionsAllowHypercube(cfg().dimensions)) {
+    scenePointMode = "axes";
+  }
+
+  showFrameEdges = parseBooleanParam(params.get(URL_STATE_KEYS.edges), showFrameEdges);
+  showRotationAxisHint = parseBooleanParam(params.get(URL_STATE_KEYS.axisHint), showRotationAxisHint);
+  showProjectionCoords = parseBooleanParam(params.get(URL_STATE_KEYS.coords), showProjectionCoords);
+
+  const parsedZoom = Number(params.get(URL_STATE_KEYS.zoom));
+  if (Number.isFinite(parsedZoom)) {
+    projectionZoom = clampProjectionZoom(parsedZoom);
+  }
+
+  const parsedU = parseNumberListParam(params.get(URL_STATE_KEYS.u), cfg().dimensions);
+  const parsedV = parseNumberListParam(params.get(URL_STATE_KEYS.v), cfg().dimensions);
+  if (parsedU && parsedV) {
+    viewPlane = orthonormalize(parsedU, parsedV);
+    lastDepthNormal = null;
+  }
+
+  if (scenePointMode === "cloud") {
+    invalidateCloudCache();
+  }
+
+  enableUrlStateSync = true;
+  return true;
 }
 
 function makeBasis(dimensions) {
@@ -777,6 +927,7 @@ function rotateInPlane(planeLabel, direction) {
     applyPlaneRotation(viewPlane.u, axisA, axisB, delta),
     applyPlaneRotation(viewPlane.v, axisA, axisB, delta)
   );
+  activateUrlStateSync();
   render();
 }
 
@@ -1173,11 +1324,13 @@ function clampProjectionZoom(value) {
 
 function setProjectionZoom(next) {
   projectionZoom = clampProjectionZoom(next);
+  activateUrlStateSync();
   render();
 }
 
 function resetProjectionZoom() {
   projectionZoom = 1;
+  activateUrlStateSync();
   render();
 }
 
@@ -1229,6 +1382,7 @@ function render() {
       return `${plane.label}: ${degrees.toFixed(1)}°`;
     })
     .join("\n");
+  scheduleUrlStateSync();
 }
 
 function formatVector(vector) {
@@ -1437,6 +1591,7 @@ function applyMode(nextMode) {
   buildLegend();
   updateTabs();
   updateSceneTabs();
+  activateUrlStateSync();
   resizeAllCanvases();
 }
 
@@ -1445,28 +1600,37 @@ tab4d.addEventListener("click", () => applyMode("4"));
 tab10d.addEventListener("click", () => applyMode("10"));
 tab100d?.addEventListener("click", () => applyMode("100"));
 
-function setShowFrameEdges(on) {
+function setShowFrameEdges(on, syncUrl = true) {
   showFrameEdges = on;
   edgeToggle.classList.toggle("is-on", on);
   edgeToggle.setAttribute("aria-checked", String(on));
+  if (syncUrl) {
+    activateUrlStateSync();
+  }
   render();
 }
 
 edgeToggle.addEventListener("click", () => setShowFrameEdges(!showFrameEdges));
 
-function setShowRotationAxisHint(on) {
+function setShowRotationAxisHint(on, syncUrl = true) {
   showRotationAxisHint = on;
   axisHintToggle.classList.toggle("is-on", on);
   axisHintToggle.setAttribute("aria-checked", String(on));
+  if (syncUrl) {
+    activateUrlStateSync();
+  }
   render();
 }
 
 axisHintToggle.addEventListener("click", () => setShowRotationAxisHint(!showRotationAxisHint));
 
-function setShowProjectionCoords(on) {
+function setShowProjectionCoords(on, syncUrl = true) {
   showProjectionCoords = on;
   coordsToggle.classList.toggle("is-on", on);
   coordsToggle.setAttribute("aria-checked", String(on));
+  if (syncUrl) {
+    activateUrlStateSync();
+  }
   render();
 }
 
@@ -1507,6 +1671,7 @@ function setScenePointMode(mode) {
   }
   updateSceneTabs();
   buildLegend();
+  activateUrlStateSync();
   render();
 }
 
@@ -1521,6 +1686,7 @@ resetButton.addEventListener("click", () => {
   clearPcaTripleHighlight();
   projectionZoom = 1;
   lastDepthNormal = null;
+  activateUrlStateSync();
   render();
 });
 
@@ -1533,6 +1699,7 @@ randomViewButton.addEventListener("click", () => {
   }
   viewPlane = randomViewPlaneFromSeed(Date.now());
   lastDepthNormal = null;
+  activateUrlStateSync();
   render();
 });
 
@@ -1543,6 +1710,7 @@ pcaViewButton?.addEventListener("click", () => {
   viewPlane = plane;
   pcaTripleLabels = labels;
   lastDepthNormal = null;
+  activateUrlStateSync();
   render();
 });
 
@@ -1561,11 +1729,15 @@ projectionZoomResetBtn?.addEventListener("click", () => {
 window.addEventListener("pointerup", stopActiveHold);
 window.addEventListener("blur", stopActiveHold);
 
+applyUrlStateFromLocation();
 syncDomCopy();
 buildControls();
 buildLegend();
 updateTabs();
 updateSceneTabs();
+setShowFrameEdges(showFrameEdges, false);
+setShowRotationAxisHint(showRotationAxisHint, false);
+setShowProjectionCoords(showProjectionCoords, false);
 
 if (canvasStack || primaryCanvasWrap) {
   const ro = new ResizeObserver(() => resizeAllCanvases());
