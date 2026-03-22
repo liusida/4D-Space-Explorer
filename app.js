@@ -317,6 +317,13 @@ const pcaTripleReadoutEl = document.getElementById("pcaTripleReadout");
 
 let activeHold = null;
 
+/**
+ * Continuity anchor for "signed depth" (n₁·p). The complement basis is recomputed each render and can
+ * legitimately pick n₁ or −n₁ (or reorder normals) near degenerate configurations; we align it to the
+ * previous frame to prevent visual/readout flips under tiny rotations.
+ */
+let lastDepthNormal = null;
+
 function dot(a, b) {
   return a.reduce((sum, value, index) => sum + value * b[index], 0);
 }
@@ -400,6 +407,41 @@ function complementFromViewPlane() {
   }
 
   return { dim, normals: found };
+}
+
+function alignComplementForDepthContinuity(comp) {
+  const normals = comp?.normals ?? [];
+  if (!normals.length) {
+    lastDepthNormal = null;
+    return comp;
+  }
+  if (!lastDepthNormal || lastDepthNormal.length !== comp.dim) {
+    lastDepthNormal = [...normals[0]];
+    return comp;
+  }
+
+  let bestIdx = 0;
+  let bestAbs = Math.abs(dot(normals[0], lastDepthNormal));
+  for (let i = 1; i < normals.length; i += 1) {
+    const a = Math.abs(dot(normals[i], lastDepthNormal));
+    if (a > bestAbs) {
+      bestAbs = a;
+      bestIdx = i;
+    }
+  }
+
+  if (bestIdx !== 0) {
+    const t = normals[0];
+    normals[0] = normals[bestIdx];
+    normals[bestIdx] = t;
+  }
+
+  if (dot(normals[0], lastDepthNormal) < 0) {
+    normals[0] = scale(normals[0], -1);
+  }
+
+  lastDepthNormal = [...normals[0]];
+  return comp;
 }
 
 /**
@@ -1148,7 +1190,7 @@ function syncCanvasAriaLabels() {
 }
 
 function render() {
-  const comp = complementFromViewPlane();
+  const comp = alignComplementForDepthContinuity(complementFromViewPlane());
   updatePanelCaptions();
   syncCanvasAriaLabels();
   syncPcaTripleReadout();
@@ -1381,6 +1423,7 @@ function applyMode(nextMode) {
   viewPlane = freshDefaultPlane();
   clearPcaTripleHighlight();
   projectionZoom = 1;
+  lastDepthNormal = null;
 
   if (scenePointMode === "cube" && !dimensionsAllowHypercube(cfg().dimensions)) {
     scenePointMode = "axes";
@@ -1477,6 +1520,7 @@ resetButton.addEventListener("click", () => {
   viewPlane = freshDefaultPlane();
   clearPcaTripleHighlight();
   projectionZoom = 1;
+  lastDepthNormal = null;
   render();
 });
 
@@ -1488,6 +1532,7 @@ randomViewButton.addEventListener("click", () => {
     invalidateCloudCache();
   }
   viewPlane = randomViewPlaneFromSeed(Date.now());
+  lastDepthNormal = null;
   render();
 });
 
@@ -1497,6 +1542,7 @@ pcaViewButton?.addEventListener("click", () => {
   const { plane, labels } = applyPcaViewFromRandomTriple(Date.now());
   viewPlane = plane;
   pcaTripleLabels = labels;
+  lastDepthNormal = null;
   render();
 });
 
