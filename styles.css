@@ -1,0 +1,251 @@
+:root {
+  --bg: #f3efe4;
+  --panel: rgba(255, 251, 245, 0.86);
+  --panel-border: rgba(39, 50, 35, 0.14);
+  --text: #182218;
+  --muted: #536350;
+  --accent: #d7682d;
+  --accent-deep: #ad4c1c;
+  --grid: rgba(24, 34, 24, 0.12);
+  --shadow: 0 24px 70px rgba(58, 40, 17, 0.12);
+  --radius: 24px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(255, 212, 161, 0.9), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(125, 173, 164, 0.32), transparent 30%),
+    linear-gradient(160deg, #f8f3e7 0%, #efe8da 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(24, 34, 24, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24, 34, 24, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 82%);
+}
+
+.layout {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 28px 0 40px;
+}
+
+.panel {
+  background: var(--panel);
+  backdrop-filter: blur(22px);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.hero {
+  padding: 28px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--accent-deep);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 14px;
+  font-size: clamp(2rem, 5vw, 3.7rem);
+  line-height: 0.98;
+  max-width: 10ch;
+}
+
+.intro,
+.controls-copy,
+.viewer-header p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.viewer-panel {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.viewer-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.viewer-header h2,
+.controls-panel h2,
+.status-panel h2 {
+  margin-bottom: 8px;
+  font-size: 1.2rem;
+}
+
+.reset-button,
+.knob {
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.reset-button {
+  padding: 12px 18px;
+  background: linear-gradient(135deg, var(--accent), #f2a444);
+  color: #fffaf3;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(215, 104, 45, 0.3);
+}
+
+.reset-button:hover,
+.knob:hover {
+  transform: translateY(-1px);
+}
+
+.reset-button:active,
+.knob:active {
+  transform: translateY(1px);
+}
+
+#projectionCanvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.94) 0%, rgba(245, 238, 226, 0.95) 100%);
+  border: 1px solid rgba(24, 34, 24, 0.08);
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 0.9fr;
+  gap: 20px;
+}
+
+.controls-panel,
+.status-panel {
+  padding: 24px;
+}
+
+.knob-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.knob-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(24, 34, 24, 0.08);
+}
+
+.knob-row strong {
+  font-size: 1rem;
+}
+
+.knob-pair {
+  display: flex;
+  gap: 10px;
+}
+
+.knob {
+  width: 42px;
+  height: 42px;
+  background: #182218;
+  color: #fef5e8;
+  font-size: 1.2rem;
+  box-shadow: 0 10px 20px rgba(24, 34, 24, 0.15);
+}
+
+.status-block + .status-block {
+  margin-top: 18px;
+}
+
+.status-label {
+  display: inline-block;
+  min-width: 24px;
+  font-weight: 700;
+  color: var(--accent-deep);
+}
+
+code {
+  display: block;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(24, 34, 24, 0.06);
+  font-family: "SFMono-Regular", "Cascadia Code", "Consolas", monospace;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.legend {
+  margin-top: 24px;
+  display: grid;
+  gap: 10px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    width: min(100% - 20px, 1180px);
+    padding-top: 16px;
+  }
+
+  .controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .viewer-header {
+    flex-direction: column;
+  }
+
+  .knob-grid {
+    grid-template-columns: 1fr;
+  }
+}

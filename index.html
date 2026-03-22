@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>4D Rotation Explorer</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="layout">
+    <section class="panel hero">
+      <p class="eyebrow">4D Projection Playground</p>
+      <h1>Rotate a 2D viewing plane through 4D space.</h1>
+      <p class="intro">
+        The points shown are the origin and the four unit vectors of 4D space. The screen displays their
+        projection onto the current 2D plane defined by two orthonormal directions.
+      </p>
+    </section>
+
+    <section class="panel viewer-panel">
+      <div class="viewer-header">
+        <div>
+          <h2>Projection</h2>
+          <p>Initial view: dimensions 1 and 2.</p>
+        </div>
+        <button id="resetButton" class="reset-button" type="button">Reset View</button>
+      </div>
+      <canvas id="projectionCanvas" width="960" height="640" aria-label="4D projection canvas"></canvas>
+    </section>
+
+    <section class="controls-grid">
+      <section class="panel controls-panel">
+        <h2>Rotate Toward Dimensions</h2>
+        <p class="controls-copy">
+          Each click nudges the viewing plane toward or away from a basis direction. The plane is normalized after
+          every step so the projection stays stable.
+        </p>
+        <div id="knobGrid" class="knob-grid"></div>
+      </section>
+
+      <section class="panel status-panel">
+        <h2>Current Plane</h2>
+        <div class="status-block">
+          <span class="status-label">u</span>
+          <code id="uVector"></code>
+        </div>
+        <div class="status-block">
+          <span class="status-label">v</span>
+          <code id="vVector"></code>
+        </div>
+        <div class="legend" id="legend"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
