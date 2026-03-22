@@ -17,39 +17,45 @@
       </p>
     </section>
 
-    <section class="panel viewer-panel">
-      <div class="viewer-header">
-        <div>
-          <h2>Projection</h2>
-          <p>Initial view: dimensions 1 and 2.</p>
+    <section class="workspace">
+      <section class="panel viewer-panel">
+        <div class="viewer-header">
+          <div>
+            <h2>Projection</h2>
+            <p>Initial view: dimensions 1 and 2.</p>
+          </div>
+          <button id="resetButton" class="reset-button" type="button">Reset View</button>
         </div>
-        <button id="resetButton" class="reset-button" type="button">Reset View</button>
-      </div>
-      <canvas id="projectionCanvas" width="960" height="640" aria-label="4D projection canvas"></canvas>
-    </section>
-
-    <section class="controls-grid">
-      <section class="panel controls-panel">
-        <h2>Rotate Toward Dimensions</h2>
-        <p class="controls-copy">
-          Each click nudges the viewing plane toward or away from a basis direction. The plane is normalized after
-          every step so the projection stays stable.
-        </p>
-        <div id="knobGrid" class="knob-grid"></div>
+        <canvas id="projectionCanvas" width="1120" height="760" aria-label="4D projection canvas"></canvas>
       </section>
 
-      <section class="panel status-panel">
-        <h2>Current Plane</h2>
-        <div class="status-block">
-          <span class="status-label">u</span>
-          <code id="uVector"></code>
-        </div>
-        <div class="status-block">
-          <span class="status-label">v</span>
-          <code id="vVector"></code>
-        </div>
-        <div class="legend" id="legend"></div>
-      </section>
+      <aside class="sidebar">
+        <section class="panel controls-panel">
+          <h2>Rotate In 4D Planes</h2>
+          <p class="controls-copy">
+            Each control applies a true rotation inside one coordinate plane of 4D space. Hold a button to keep
+            rotating, and a full turn returns to the original view.
+          </p>
+          <div id="knobGrid" class="knob-grid"></div>
+        </section>
+
+        <section class="panel status-panel">
+          <h2>Current Plane</h2>
+          <div class="status-block">
+            <span class="status-label">u</span>
+            <code id="uVector"></code>
+          </div>
+          <div class="status-block">
+            <span class="status-label">v</span>
+            <code id="vVector"></code>
+          </div>
+          <div class="status-block">
+            <span class="status-label">angles</span>
+            <code id="angleState"></code>
+          </div>
+          <div class="legend" id="legend"></div>
+        </section>
+      </aside>
     </section>
   </main>
 

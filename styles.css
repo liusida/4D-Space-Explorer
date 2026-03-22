@@ -39,9 +39,9 @@ body::before {
 }
 
 .layout {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1480px, calc(100% - 24px));
   margin: 0 auto;
-  padding: 28px 0 40px;
+  padding: 18px 0 28px;
 }
 
 .panel {
@@ -53,8 +53,8 @@ body::before {
 }
 
 .hero {
-  padding: 28px;
-  margin-bottom: 20px;
+  padding: 28px 32px;
+  margin-bottom: 18px;
 }
 
 .eyebrow {
@@ -88,7 +88,7 @@ h1 {
 
 .viewer-panel {
   padding: 20px;
-  margin-bottom: 20px;
+  min-height: 100%;
 }
 
 .viewer-header {
@@ -141,12 +141,19 @@ h1 {
   background:
     radial-gradient(circle at center, rgba(255, 255, 255, 0.94) 0%, rgba(245, 238, 226, 0.95) 100%);
   border: 1px solid rgba(24, 34, 24, 0.08);
+  aspect-ratio: 1120 / 760;
 }
 
-.controls-grid {
+.workspace {
   display: grid;
-  grid-template-columns: 1.3fr 0.9fr;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 420px);
+  gap: 18px;
+  align-items: start;
+}
+
+.sidebar {
+  display: grid;
+  gap: 18px;
 }
 
 .controls-panel,
@@ -233,11 +240,11 @@ code {
 
 @media (max-width: 860px) {
   .layout {
-    width: min(100% - 20px, 1180px);
+    width: min(100% - 16px, 1480px);
     padding-top: 16px;
   }
 
-  .controls-grid {
+  .workspace {
     grid-template-columns: 1fr;
   }
 
