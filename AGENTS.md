@@ -57,3 +57,10 @@ Fixed corner link in **`index.html`** + **`.github-peel`** in CSS → **https://
 - Prefer **small, focused diffs**; match existing style (vanilla JS, no frameworks).
 - After canvas or flex layout changes, **check Firefox** and **scroll** the full page height.
 - If you add README-only user hints, **README.md** is enough; keep this file for **agent-facing** pitfalls and invariants.
+
+## Cursor Cloud specific instructions
+
+- **No build step, no dependencies.** There is no `package.json`, no bundler, no linter config, and no test framework. The entire app is three files: `index.html`, `app.js`, `styles.css`.
+- **Dev server:** serve the repo root with any static HTTP server, e.g. `python3 -m http.server 8000`. Then open `http://localhost:8000/` in Chrome.
+- **No lint/test commands exist.** Validation is manual: open the page and interact with dimension tabs, scene tabs, rotation controls, Random view, PCA view, and zoom.
+- **No secrets or environment variables are required.**
