@@ -8,7 +8,7 @@ const PROJECTION_ZOOM_FACTOR = 1.18;
 /** 2ᵈ vertices; hypercube scene is only offered up to this D (10 → 1 024 verts). */
 const MAX_HYPERCUBE_DIM = 10;
 
-/** Max possible out-of-plane norm for our points (origin + unit axes): ‖eᵢ‖ = 1 ⇒ complement norm ∈ [0, 1]. */
+/** Clamp half-range for signed depth n₁·p on unit axes: |eᵢ·n₁| ≤ 1. Hypercube / cloud use √(dim) in sceneDepthRefNorm(). */
 const DEPTH_RADIUS_REF_NORM = 1;
 
 /** Dot radius multiplier: far (max ‖n·p‖ / out-of-plane) → min, near → max. */
@@ -345,41 +345,19 @@ function normalize(vector, fallback) {
   return scale(vector, 1 / length);
 }
 
-function cross3(a, b) {
-  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-}
-
 function standardAxes(dim) {
   return Array.from({ length: dim }, (_, k) => standardBasisVector(dim, k));
 }
 
-/** Orthonormal basis of the orthogonal complement of span{u,v} (length dim−2, or one vector in 3D). */
+/**
+ * Orthonormal basis of the orthogonal complement of span{u,v} (length dim−2).
+ * Same Gram–Schmidt-from-standard-basis construction for every dimension (including ℝ³), so n₁ and
+ * signed depth behave identically in 3D and 4D+ for testing intuition.
+ */
 function complementFromViewPlane() {
   const dim = cfg().dimensions;
   const u = viewPlane.u;
   const v = viewPlane.v;
-
-  if (dim === 3) {
-    let rawN = cross3(u, v);
-    if (magnitude(rawN) < 1e-10) {
-      const tryAxes = [
-        [1, 0, 0],
-        [0, 1, 0],
-        [0, 0, 1],
-      ];
-      for (const ax of tryAxes) {
-        let w = subtract(ax, scale(u, dot(ax, u)));
-        w = subtract(w, scale(v, dot(w, v)));
-        if (magnitude(w) > 1e-9) {
-          rawN = w;
-          break;
-        }
-      }
-    }
-    const n = normalize(rawN, [0, 0, 1]);
-    return { dim: 3, normals: [n] };
-  }
-
   const axes = standardAxes(dim);
   const found = [];
   const need = dim - 2;
@@ -424,48 +402,38 @@ function complementFromViewPlane() {
   return { dim, normals: found };
 }
 
-function outOfPlaneNorm(vector, comp) {
-  let sumSq = 0;
-  for (const n of comp.normals) {
-    const d = dot(vector, n);
-    sumSq += d * d;
-  }
-  return Math.sqrt(sumSq);
+/**
+ * Signed depth along the first complement normal n₁ (same Gram–Schmidt basis as complementFromViewPlane, all D).
+ * Clamp n₁·p to ±refAbs (scene-dependent: 1 for unit axes, √d for {0,1}ᵈ hypercube and [−1,1]ᵈ cloud).
+ * Map: most negative → largest / most opaque; most positive → smallest / faintest.
+ */
+function depthRadiusScaleSignedAlongFirstNormal(vector, nUnit, refAbs) {
+  const ref = Math.max(refAbs, 1e-12);
+  const raw = dot(vector, nUnit);
+  const d = Math.max(-ref, Math.min(ref, raw));
+  const t = (d / ref + 1) / 2;
+  return DEPTH_DOT_MULT_MIN + (DEPTH_DOT_MULT_MAX - DEPTH_DOT_MULT_MIN) * (1 - t);
 }
 
-/** Third number next to (x,y): signed n·p in ℝ³; ‖⊥‖ in higher D (same as depth cue). */
+/** Third number next to (x,y): signed n₁·p (same convention as dot size / opacity). */
 function depthForCoordLabel(vector, comp) {
-  if (comp.dim === 3) {
-    return dot(vector, comp.normals[0]);
+  if (!comp.normals.length) {
+    return 0;
   }
-  return outOfPlaneNorm(vector, comp);
-}
-
-/** ‖⊥‖ = 0 → largest dot, ‖⊥‖ = ref → smallest (linear). Ref 1 matches unit axis vectors in ℝⁿ (n ≥ 4). */
-function depthRadiusScale(norm, refNorm) {
-  const ref = Math.max(refNorm, 1e-12);
-  const t = Math.min(1, norm / ref);
-  return DEPTH_DOT_MULT_MIN + (DEPTH_DOT_MULT_MAX - DEPTH_DOT_MULT_MIN) * (1 - t);
-}
-
-/** ℝ³: n·p = -1 → largest, n·p = +1 → smallest (linear); in between at 0 → mid. Clamps p·n to [-1, 1]. */
-function depthRadiusScaleSigned3(vector, nUnit) {
-  const d = Math.max(-1, Math.min(1, dot(vector, nUnit)));
-  const t = (d + 1) / 2;
-  return DEPTH_DOT_MULT_MIN + (DEPTH_DOT_MULT_MAX - DEPTH_DOT_MULT_MIN) * (1 - t);
+  return dot(vector, comp.normals[0]);
 }
 
 function depthDotRadiusMultiplier(vector, comp, depthRefNorm) {
-  if (comp.dim === 3) {
-    return depthRadiusScaleSigned3(vector, comp.normals[0]);
+  if (!comp.normals.length) {
+    return DEPTH_DOT_MULT_MAX;
   }
-  return depthRadiusScale(outOfPlaneNorm(vector, comp), depthRefNorm);
+  return depthRadiusScaleSignedAlongFirstNormal(vector, comp.normals[0], depthRefNorm);
 }
 
 const DEPTH_DOT_ALPHA_MIN = 0.2;
 const DEPTH_DOT_ALPHA_MAX = 1;
 
-/** Same depth multiplier as radius: far (small mult) → low opacity, near → opaque. */
+/** Same depth multiplier as radius: smaller mult (more positive n₁·p) → lower opacity. */
 function depthFillAlpha(mult, useDepth) {
   if (!useDepth) {
     return DEPTH_DOT_ALPHA_MAX;
@@ -1175,9 +1143,7 @@ function syncCanvasAriaLabels() {
   const base = cfg().canvasAria;
   const d = cfg().dimensions;
   const depthHint =
-    d === 3
-      ? "signed n·p in 3D (−1 large/opaque, +1 small/faint)"
-      : `‖⊥‖ in the (${d}−2)-D normal space`;
+    "signed n₁·p along the first normal of the complement of span{u,v} (−ref large/opaque, +ref small/faint)";
   canvas.setAttribute("aria-label", `${base}; dot size and opacity ∝ ${depthHint}`);
 }
 
